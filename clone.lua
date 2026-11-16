@@ -1,111 +1,101 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 
 local env = (getgenv and getgenv()) or _G
-if env.SideClonesCleanup then
-	pcall(env.SideClonesCleanup)
+if env.TeleClonesCleanup then
+	pcall(env.TeleClonesCleanup)
 end
 
 -- ===== الإعدادات =====
-local OFFSET = 5            -- المسافة بين كل نسخة والتي قبلها
-local PER_SIDE = 1          -- عدد النسخ في كل جهة
-local GHOST = true          -- true = نسخ متوهجة، false = نسخ بشكلك الأصلي
-local COLOR = Color3.fromRGB(0, 170, 255)
-local TRANSPARENCY = 0.4
+local DISTANCE = 6      -- المسافة بين كل نسخة والتي قبلها
+local PER_SIDE = 1      -- عدد النسخ في كل جهة (1 = يمين ويسار، 2 = اثنتين في كل جهة)
 -- =====================
 
-local clones = {}
-local renderCon
-local charCon
-
-local function clearClones()
-	for _, c in ipairs(clones) do
-		c.model:Destroy()
-	end
-	table.clear(clones)
+local offsets = {0}
+for i = 1, PER_SIDE do
+	table.insert(offsets, -DISTANCE * i)
+	table.insert(offsets, DISTANCE * i)
 end
 
-local function buildClones(char)
-	clearClones()
-	char.Archivable = true
-	local origDesc = char:GetDescendants()
+local enabled = true
+local index = 0
+local realCF = nil
 
-	local offsets = {}
-	for i = 1, PER_SIDE do
-		table.insert(offsets, -OFFSET * i)
-		table.insert(offsets, OFFSET * i)
-	end
-
-	for _, off in ipairs(offsets) do
-		local model = char:Clone()
-		if model then
-			model.Name = "SideClone"
-			local cloneDesc = model:GetDescendants()
-
-			local list = {}
-			for i, d in ipairs(cloneDesc) do
-				local o = origDesc[i]
-				if d:IsA("BasePart") and o and o:IsA("BasePart") then
-					table.insert(list, {orig = o, part = d})
-				end
-			end
-
-			for _, d in ipairs(cloneDesc) do
-				if d:IsA("BaseScript") or d:IsA("Humanoid") then
-					d:Destroy()
-				elseif GHOST and d:IsA("Decal") then
-					d:Destroy()
-				end
-			end
-
-			for _, p in ipairs(list) do
-				local part = p.part
-				part.Anchored = true
-				part.CanCollide = false
-				part.CanQuery = false
-				part.CanTouch = false
-				if GHOST and part.Transparency < 1 then
-					part.Material = Enum.Material.Neon
-					part.Color = COLOR
-					part.Transparency = TRANSPARENCY
-				end
-			end
-
-			model.Parent = workspace
-			table.insert(clones, {model = model, offset = off, pairs = list})
-		end
-	end
+local function getRoot()
+	local c = player.Character
+	return c and c:FindFirstChild("HumanoidRootPart")
 end
 
-renderCon = RunService.RenderStepped:Connect(function()
-	local char = player.Character
-	local root = char and char:FindFirstChild("HumanoidRootPart")
-	if not root then return end
-	for _, c in ipairs(clones) do
-		local shift = root.CFrame.RightVector * c.offset
-		for _, p in ipairs(c.pairs) do
-			if p.orig.Parent then
-				p.part.CFrame = p.orig.CFrame + shift
-			end
-		end
+-- قبل رسم الشاشة: رجّعني لمكاني الحقيقي
+local preCon = RunService.RenderStepped:Connect(function()
+	if realCF then
+		local root = getRoot()
+		if root then root.CFrame = realCF end
+		realCF = nil
 	end
 end)
 
-local function onChar(char)
-	char:WaitForChild("HumanoidRootPart")
-	task.wait(0.5)
-	buildClones(char)
+-- بعد الفيزياء: انقلني للمكان الجانبي (هذا اللي يُرسل للسيرفر)
+local postCon = RunService.Heartbeat:Connect(function()
+	if not enabled then return end
+	local root = getRoot()
+	if not root then return end
+	index = index % #offsets + 1
+	local off = offsets[index]
+	if off == 0 then return end
+	realCF = root.CFrame
+	root.CFrame = realCF * CFrame.new(off, 0, 0)
+end)
+
+-- الواجهة
+local gui = Instance.new("ScreenGui")
+gui.Name = "TeleClonesGui"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local b = Instance.new("TextButton")
+b.Size = UDim2.new(0, 110, 0, 50)
+b.Position = UDim2.new(1, -140, 1, -200)
+b.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+b.Text = "CLONES: ON"
+b.TextScaled = true
+b.Parent = gui
+Instance.new("UICorner", b).CornerRadius = UDim.new(0, 12)
+
+local x = Instance.new("TextButton")
+x.Size = UDim2.new(0, 40, 0, 40)
+x.Position = UDim2.new(1, -60, 1, -250)
+x.BackgroundColor3 = Color3.fromRGB(220, 40, 40)
+x.Text = "X"
+x.TextColor3 = Color3.new(1, 1, 1)
+x.TextScaled = true
+x.Parent = gui
+Instance.new("UICorner", x).CornerRadius = UDim.new(1, 0)
+
+local function destroyAll()
+	preCon:Disconnect()
+	postCon:Disconnect()
+	if realCF then
+		local root = getRoot()
+		if root then root.CFrame = realCF end
+		realCF = nil
+	end
+	gui:Destroy()
+	env.TeleClonesCleanup = nil
 end
 
-charCon = player.CharacterAdded:Connect(onChar)
-if player.Character then
-	task.spawn(onChar, player.Character)
-end
+b.MouseButton1Click:Connect(function()
+	enabled = not enabled
+	b.Text = enabled and "CLONES: ON" or "CLONES: OFF"
+	b.BackgroundColor3 = enabled and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(120, 120, 120)
+end)
+x.MouseButton1Click:Connect(destroyAll)
 
-env.SideClonesCleanup = function()
-	if renderCon then renderCon:Disconnect() end
-	if charCon then charCon:Disconnect() end
-	clearClones()
-	env.SideClonesCleanup = nil
-end
+UIS.InputBegan:Connect(function(i, gp)
+	if gp then return end
+	if i.KeyCode == Enum.KeyCode.X then destroyAll() end
+end)
+
+env.TeleClonesCleanup = destroyAll
