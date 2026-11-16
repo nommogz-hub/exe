@@ -7,7 +7,7 @@ local player = Players.LocalPlayer
 
 -- ===== الإعدادات =====
 local DASH_SPEED = 10          -- السرعة (أقل = أبطأ)
-local DASH_DURATION = 5.5      -- المدة (أكثر = أبعد)
+local DASH_DURATION = 20.5      -- المدة (أكثر = أبعد)
 local DASH_COOLDOWN = 2
 local ANIM_SPEED = 0.1         -- سرعة الأنيميشن (0.3 = بطيء جداً، 1 = عادي)
 local CLONE_INTERVAL = 0.1     -- كل كم ثانية يظهر ظل
