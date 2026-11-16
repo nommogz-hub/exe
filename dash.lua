@@ -6,12 +6,12 @@ local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 
 -- ===== الإعدادات =====
-local DASH_SPEED = 40          -- السرعة (أقل = أبطأ)
-local DASH_DURATION = 1.5      -- المدة (أكثر = أبعد)
+local DASH_SPEED = 10          -- السرعة (أقل = أبطأ)
+local DASH_DURATION = 5.5      -- المدة (أكثر = أبعد)
 local DASH_COOLDOWN = 2
-local ANIM_SPEED = 0.3         -- سرعة الأنيميشن (0.3 = بطيء جداً، 1 = عادي)
+local ANIM_SPEED = 0.1         -- سرعة الأنيميشن (0.3 = بطيء جداً، 1 = عادي)
 local CLONE_INTERVAL = 0.1     -- كل كم ثانية يظهر ظل
-local FADE_TIME = 1            -- مدة تلاشي الظل
+local FADE_TIME = 5            -- مدة تلاشي الظل
 local CLONE_COLOR = Color3.fromRGB(0, 170, 255)
 -- المسافة = السرعة × المدة = 40 × 1.5 = 60 ستود
 -- =====================
